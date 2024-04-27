@@ -8,7 +8,7 @@ This project established formal semantics of Assurance Cases (ACs) in the style 
 
 After cloning the repository:
 
-1. Run `lake exe cache get` to download mathlib
+1. Run `lake exe cache get` to download mathlib. This may take several minutes.
 2. Run `lake build` to build the repository. This will verify all proofs in the `SPL` and `Assurance` directories.  You should see something like: 
 ```
 [3114/4452] Building SPL.Config
