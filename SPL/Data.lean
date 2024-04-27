@@ -182,3 +182,43 @@ lemma derive_mem_iff [DecidableEq α] {f : vFinFamily α F} {s : Finset α} {c :
       simp [h1]
 
 end vFinFamily
+
+
+-- The following is also adapted from Shahin: https://github.com/ramyshahin/variability/ -/
+
+
+/- Paritions of Configuration Spaces  -/
+def disjointPCs {F: Type} [FeatureSet F] (pcs : List (PC F))  (Φ : FeatModel F)  : Prop := ∀ (c : Config Φ) (pc₁ pc₂ : PC F), pc₁ ∈ pcs → pc₂ ∈ pcs → c ⊨ pc₁ → c ⊨ pc₂ → pc₁ = pc₂
+def completePCs {F: Type} [FeatureSet F] (pcs : List (PC F))  (Φ : FeatModel F)  : Prop := ∀ (c : Config Φ), ∃ (pc : PC F), pc ∈ pcs ∧ c ⊨ pc
+
+structure ConfPartition (Φ : FeatModel F) where
+    pcs: List (PC F)
+    disjoint: disjointPCs pcs Φ
+    complete: completePCs pcs Φ
+
+variable {F: Type} [FeatureSet F] {Φ : FeatModel F}
+
+def findIdx (p : ConfPartition Φ) (c : Config Φ) : Fin p.pcs.length :=
+    let i := p.pcs.findIdx (c ⊨ .)
+    let p: i < p.pcs.length :=
+    by  apply List.findIdx_lt_length_of_exists
+        simp only [decide_eq_true_eq]
+        apply p.complete
+    ⟨i, p⟩
+
+
+/- The canonically lifted type. It is "canonical" in the sense that every type can be lifted in this form, and every other lifted type
+   can be reduced to this type  -/
+
+structure Lifted (α : Type u) (Φ : FeatModel F) where
+    configs: ConfPartition Φ
+    vals   : List α
+    length_inv : configs.pcs.length = vals.length
+
+
+def index {α : Type u} : Lifted α Φ → Config Φ → α
+| .mk confs xs len, c => xs.get <| (findIdx confs c).cast len
+
+instance {α : Type u} : Var (Lifted α Φ) α Φ := ⟨λ a c => index a c⟩
+
+end SPL
