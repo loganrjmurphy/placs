@@ -1,8 +1,6 @@
-import SPL
+import Var
 import Assurance.Product.GSN
 set_option autoImplicit false
-
-open SPL
 
 variable {F : Type} [FeatureSet F]
 
@@ -40,31 +38,34 @@ end vGoal
 
 inductive vGSN (Φ: FeatModel F)
 | evd (g : vGoal Φ) : (∀ (c : Config Φ), c ⊨ g.pc → ⟦g ↓ c⟧) → vGSN Φ
-| decomp : vGoal Φ → List (vGSN Φ) → vGSN Φ
+| strategy : vGoal Φ → List (vGSN Φ) → vGSN Φ
 
 namespace vGSN
 
 abbrev Evd (g : vGoal Φ) := ∀ (c : Config Φ), c ⊨ g.pc → ⟦g ↓ c⟧
-scoped infix:80 "⇐" => vGSN.decomp
+scoped infix:80 "⇐" => strategy
 scoped infix:80 "↼" => vGSN.evd
 scoped infix:81 "⬝" => vGoal.pred
 
 /-- Handwritten induction principle for vGSN trees to simplify proofs about nested inductive trees. To be replaced by more systematic methods -/
-axiom inductionOn
+def inductionOn
   (motive : vGSN Φ → Prop)
   (evd : ∀ (g : vGoal Φ) (e : Evd g), motive (vGSN.evd g e))
-  (decomp :
+  (strategy :
      ∀ (g : vGoal Φ) (children : List (vGSN Φ)),
          (∀ (g : vGSN Φ), g ∈ children → motive g)
-            → motive (vGSN.decomp g children))
-  : Π (G : vGSN Φ), motive G
+            → motive (strategy g children))
+  : ∀ (G : vGSN Φ), motive G :=
+    @vGSN.rec F _ Φ motive (λ gs => ∀ g ∈ gs, motive g) evd strategy
+    (List.forall_iff_forall_mem.mp trivial)
+    (λ x xs hx ih => by simp only at *; exact List.forall_mem_cons.mpr ⟨hx, ih⟩)
 
 def derive (c : Config Φ) : vGSN Φ → GSN
 | .evd g e =>
   if h:c ⊨ g.pc then .evd (g ↓ c) (e c h) else .nil
-| .decomp g children=>
+| strategy g children=>
   if c ⊨ g.pc then
-    (λ ⟨x,_⟩  => derive c x) <$> children.attach |> List.filter GSN.nnil |> .decomp (g ↓ c)
+    (λ ⟨x,_⟩  => derive c x) <$> children.attach |> List.filter GSN.nnil |> .strategy (g ↓ c)
   else .nil
 decreasing_by
   simp_wf
@@ -76,7 +77,7 @@ instance : Var (vGSN Φ) (GSN) Φ := ⟨λ x c => vGSN.derive c x⟩
 
 def root : vGSN Φ → vGoal Φ
 | .evd g _ => g
-| .decomp g _ => g
+| strategy g _ => g
 
 lemma root_evd {g : vGoal Φ} {e : Evd g} : root (g ↼ e) = g := rfl
 lemma root_decomp {g : vGoal Φ} {l : List (vGSN Φ)} : root (g ⇐ l) = g := rfl
@@ -88,13 +89,13 @@ lemma derive_evd_pos {c : Config Φ} {g : vGoal Φ} {e : Evd g} {h  : c ⊨ g.pc
 lemma derive_evd_neg {c : Config Φ} {g : vGoal Φ} {e : Evd g} {h  : ¬ c ⊨ g.pc} : (g ↼ e) ↓ c = GSN.nil := by rw [derive_def,derive]; simp only [h, reduceDite]
 
 lemma derive_decomp_pos {c : Config Φ} {g : vGoal Φ} {l : List (vGSN Φ)}  : c ⊨ g.pc ↔
-  (g ⇐ l) ↓ c = GSN.decomp (g ↓ c) ((λ ⟨x,_⟩  => derive c x) <$> l.attach |> List.filter GSN.nnil) :=
+  (g ⇐ l) ↓ c = GSN.strategy (g ↓ c) ((λ ⟨x,_⟩  => derive c x) <$> l.attach |> List.filter GSN.nnil) :=
   by rw [derive_def,derive]; simp only [List.map_eq_map, ite_eq_left_iff, imp_false, not_not]
 
 lemma derive_decomp_nnil_iff {c : Config Φ} {g : vGoal Φ} {l : List (vGSN Φ)}  : c ⊨ g.pc ↔
   GSN.nnil ((g ⇐ l) ↓ c) :=
   by rw [derive_def,derive,List.map_eq_map] ;
-     by_cases hc : c ⊨ g.pc <;> simp [hc]
+     by_cases hc : c ⊨ g.pc <;> (simp [hc])
 
 lemma derive_nnil_iff {c : Config Φ} {A : vGSN Φ} : (A ↓ c).nnil ↔ c ⊨ A.root.pc :=
   by
@@ -104,7 +105,7 @@ lemma derive_nnil_iff {c : Config Φ} {A : vGSN Φ} : (A ↓ c).nnil ↔ c ⊨ A
       by_cases hc : c ⊨ g.pc <;> simp [hc]
       . rwa [derive_evd_pos]
       . rwa [derive_evd_neg]
-    | decomp g l => rw [vGSN.root_decomp,derive_decomp_nnil_iff]
+    | strategy g l => rw [vGSN.root_decomp,derive_decomp_nnil_iff]
 
 
 lemma derive_decomp_neg {c : Config Φ} {g : vGoal Φ} {l : List (vGSN Φ)} :  ¬ c ⊨ g.pc ↔
@@ -131,7 +132,7 @@ by
      rw [vGSN.root_evd] at h
      use (derive_evd_true (e:=e)).mpr h
      simp only [vGSN.root_evd,vGSN.derive_evd_pos (e:=e) (h:=h),GSN.root_evd]
-  | decomp g l =>
+  | strategy g l =>
     rw [vGSN.root_decomp] at h
     use (derive_decomp_nnil_iff (c:=c) (g:=g) (l:=l)).mp h
     simp only [vGSN.root_decomp,(vGSN.derive_decomp_pos (l:=l)).mp h,GSN.root_decomp]
@@ -161,13 +162,13 @@ by
     simp only [hA, true_and]
     cases A with
       | evd g' e => rw [vGSN.root_evd] ;  rw [← derive_def,vGSN.derive_evd_true] at hA ; exact hA.2
-      | decomp g' l' => rw [vGSN.root_decomp] ; rw [← derive_def, ← vGSN.derive_decomp_nnil_iff] at hA; exact hA.2
+      | strategy g' l' => rw [vGSN.root_decomp] ; rw [← derive_def, ← vGSN.derive_decomp_nnil_iff] at hA; exact hA.2
   . cases' h with A hA
     simp only [ne_eq,List.filter_eq_nil,List.mem_map, Bool.not_eq_true, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, not_forall, Bool.not_eq_false, exists_prop]
     use A ;  simp only [hA, true_and]
     . cases A with
       | evd g' e => rw [vGSN.root_evd] at hA ; rw [← derive_def,vGSN.derive_evd_true] ; exact hA.2
-      | decomp g' l' => rw [vGSN.root_decomp] at hA ; rw [← derive_def, ← vGSN.derive_decomp_nnil_iff] ; exact hA.2
+      | strategy g' l' => rw [vGSN.root_decomp] at hA ; rw [← derive_def, ← vGSN.derive_decomp_nnil_iff] ; exact hA.2
 
 
 
@@ -177,13 +178,13 @@ def refines (g : vGoal Φ) (l : List (vGoal Φ)) : Prop :=
 
 def supported : vGSN Φ → Prop
 | .evd _ _ => True
-| .decomp g children =>
+| strategy g children =>
       all_configs_supported g children ∧
       children.attach.Forall (λ ⟨x,_⟩ => supported x)
 
 def deductive : vGSN Φ → Prop
 | .evd _ _ => True
-| .decomp g children =>
+| strategy g children =>
       refines g (roots children) ∧
       children.attach.Forall (λ ⟨x,_⟩ => deductive x)
 
@@ -198,17 +199,56 @@ by
 
 def wf : vGSN Φ → Prop
 | .evd _ _ => True
-| .decomp g children =>
+| strategy g children =>
   (∀ g' ∈ children, ⦃g'.root.pc⦄ ⊆ ⦃g.pc⦄) ∧ children.attach.Forall (λ ⟨x,_⟩ => wf x)
 
 
 lemma wf_evd {g : vGoal Φ} {e : Evd g} : wf (g ↼ e) = True := by rw [wf]
-lemma wf_decomp {g : vGoal Φ} {l : List (vGSN Φ)} :
+lemma wf_strat {g : vGoal Φ} {l : List (vGSN Φ)} :
    wf (g ⇐ l) ↔ (∀ g' ∈ l, ⦃g'.root.pc⦄ ⊆ ⦃g.pc⦄) ∧ ∀ g' ∈ l, wf g' :=
     by rw [wf] ; simp only [and_congr_right_iff]
        intros
        rw [List.forall_iff_forall_mem]
        simp only [List.mem_attach, forall_true_left, Subtype.forall]
+
+lemma subgoal_wf {g : vGoal Φ} {l : List (vGSN Φ)} (h: wf (g ⇐ l)) (g' : vGSN Φ) (hmem : g' ∈ l) : wf g' :=
+  by rw [wf_strat] at h
+     exact h.2 g' hmem
+
+theorem helper_1 (g : vGoal Φ) (l : List (vGSN Φ))
+  (ih : ∀ g ∈ l, g.deductive ↔ ∀ (c : Config Φ), c⊨g.root.pc → (g↓c).deductive) :
+  (refines g (roots l) ∧ ∀ g' ∈ l, g'.deductive) → ∀ (c : Config Φ), c⊨g.pc → ((g⇐l)↓c).deductive :=
+by
+  intros h c hsat
+  cases' h with refines children
+  rw [vGSN.derive_decomp_pos.mp hsat, List.map_eq_map, GSN.deductive_decomp]
+  constructor
+  . intros subgoals
+    rw [vGSN.refines] at refines
+    apply refines c hsat
+    intros g' hg' hsat'
+    apply subgoals (g' ↓ c)
+    rw [GSN.roots, List.reduceOption_mem_iff,List.mem_map] ; rw [roots,List.map_eq_map,List.mem_map] at hg'
+    rcases hg' with ⟨A, ⟨h₁,h₂⟩⟩
+    use (A ↓ c)
+    simp only [List.mem_filter, List.mem_map,List.mem_attach, true_and, Subtype.exists, exists_prop]
+    split_ands
+    . use A ; rw [derive_def] ; simp only [h₁,true_and]
+    . rwa [derive_nnil_iff,h₂]
+    . rw [GSN.root_option_elim]
+      rw [← h₂] at hsat'
+      have:= root_derive_eq_root (h:=hsat')
+      cases' this with h h'
+      use h
+      rw [h',h₂]
+  . intros A' memA'
+    rw [List.mem_filter,List.mem_map] at memA'
+    rcases memA' with ⟨⟨⟨A,memA⟩,hA⟩,hA'⟩ ; simp at hA
+    rw [← derive_def] at hA ; rw [← hA]
+    apply Iff.mp <| ih A memA
+    . exact children A memA
+    . rw [← hA] at hA'
+      exact Iff.mp (derive_nnil_iff (A:=A) (c:=c)) hA'
 
 -- Todo : modularize. And push most of the List rewriting stuff into lemmas
 theorem deductive_config_invariant {A : vGSN Φ} {wfh : wf A} :
@@ -220,41 +260,10 @@ by
     intros c hsat
     rw [vGSN.derive_evd_pos (h:=hsat)]
     exact GSN.deductive_evd
-  | decomp g l ih =>
+  | strategy g l ih =>
     rw [vGSN.deductive_decomp, vGSN.root_decomp]
     constructor
-    . intros h c hsat
-      cases' h with refines children
-      rw [vGSN.derive_decomp_pos.mp hsat, List.map_eq_map, GSN.deductive_decomp]
-      constructor
-      . intros subgoals
-        rw [vGSN.refines] at refines
-        apply refines c hsat
-        intros g' hg' hsat'
-        apply subgoals (g' ↓ c)
-        rw [GSN.roots, List.reduceOption_mem_iff,List.mem_map] ; rw [roots,List.map_eq_map,List.mem_map] at hg'
-        rcases hg' with ⟨A, ⟨h₁,h₂⟩⟩
-        use (A ↓ c)
-        simp only [List.mem_filter, List.mem_map,List.mem_attach, true_and, Subtype.exists, exists_prop]
-        split_ands
-        . use A ; rw [derive_def] ; simp only [h₁,true_and]
-        . rwa [derive_nnil_iff,h₂]
-        . rw [GSN.root_option_elim]
-          rw [← h₂] at hsat'
-          have:= root_derive_eq_root (h:=hsat')
-          cases' this with h h'
-          use h
-          rw [h',h₂]
-      . intros A' memA'
-        rw [List.mem_filter,List.mem_map] at memA'
-        rcases memA' with ⟨⟨⟨A,memA⟩,hA⟩,hA'⟩ ; simp at hA
-        rw [← derive_def] at hA ; rw [← hA]
-        apply Iff.mp <| ih A memA
-        . exact children A memA
-        . rw [← hA] at hA'
-          exact Iff.mp (derive_nnil_iff (A:=A) (c:=c)) hA'
-        . rw [wf_decomp] at wfh
-          exact wfh.2 A memA
+    . exact vGSN.helper_1 (Φ:=Φ) g l (λ g' h => (ih (wfh := subgoal_wf wfh g' h) h))
     . intros h
       constructor
       . intros c hsat subgoals
@@ -285,8 +294,8 @@ by
       . intros A memA'
         cases A with
         | evd g' e => exact vGSN.deductive_evd
-        | decomp g' l' =>
-          rw [wf_decomp] at wfh
+        | strategy g' l' =>
+          rw [wf_strat] at wfh
           cases' wfh with rootwf childrenwf
           apply Iff.mpr (ih (g' ⇐ l') memA')
           . intros c hsat

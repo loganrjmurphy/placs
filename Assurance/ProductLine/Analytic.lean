@@ -19,14 +19,14 @@ def asTemplate {A B C α β γ: Type} {Φ : FeatModel 𝔽} [Var α A Φ] [Var �
 (T : vAnalyticTemplate A B C α β γ Φ) (pc : PC 𝔽) : vTemplate A B α β Φ  :=
 { parentPC := pc,
   parent := T.parent,
-  apply := λ m x =>
+  apply := λ (m, x) =>
     (.pred pc T.inputRel (m,x))::(.pred pc T.inputPred x)::(.pred pc T.outputPred (T.F x))::(.atom pc <| ∀ k , T.fpred k (T.f k))::(.atom pc <| isLift (Φ:=Φ) T.f T.F)::[]
 }
 
 def vAnalyticTemplate_apply
 {A B C α β γ: Type} {Φ : FeatModel 𝔽} [Var α A Φ] [Var β B Φ] [Var γ C Φ]
 (T : vAnalyticTemplate A B C α β γ Φ) (pc : PC 𝔽) {a : α} {b : β} :
-  (T.asTemplate pc : vTemplate A B α β Φ ).apply a b = (.pred pc T.inputRel (a,b))::(.pred pc T.inputPred b)::(.pred pc T.outputPred (T.F b))::(.atom pc <| ∀ k , T.fpred k (T.f k))::(.atom pc (isLift (Φ:=Φ) T.f T.F))::[] :=
+  (T.asTemplate pc : vTemplate A B α β Φ ).apply (a, b) = (.pred pc T.inputRel (a,b))::(.pred pc T.inputPred b)::(.pred pc T.outputPred (T.F b))::(.atom pc <| ∀ k , T.fpred k (T.f k))::(.atom pc (isLift (Φ:=Φ) T.f T.F))::[] :=
 by rfl
 
 def lift {A B C α β γ: Type} {Φ : FeatModel 𝔽} [Var α A Φ] [Var β B Φ] [Var γ C Φ]

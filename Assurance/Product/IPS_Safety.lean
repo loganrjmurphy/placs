@@ -1,4 +1,3 @@
-
 import Assurance.Product.GSN
 
 noncomputable section

@@ -1,5 +1,5 @@
 -- import Mathlib
-import SPL.Data
+import Var.Data
 import Assurance.ProductLine.vGSN
 set_option autoImplicit false
 open SPL vSet vGSN
@@ -8,13 +8,13 @@ variable {F : Type} [FeatureSet F]
 structure vTemplate (A D α γ : Type) (Φ : FeatModel F) [Var α A Φ] [Var γ D Φ] where
   parent : A → Prop
   parentPC : PC F
-  apply : α → γ → List (vGoal Φ)
-  prec : α → γ → Prop := λ _ _ => True
+  apply : α × γ → List (vGoal Φ)
+  prec : α × γ → Prop := λ _ => True
+
 namespace vTemplate
 
-
 def valid  {A D α γ : Type} {Φ : FeatModel F} [Var α A Φ] [Var γ D Φ] (T : vTemplate A D α γ Φ) : Prop :=
-∀ x d, T.prec x d → refines (vGoal.pred T.parentPC T.parent x) (T.apply x d)
+∀ x d, T.prec (x, d) → refines (vGoal.pred T.parentPC T.parent x) (T.apply (x, d))
 
 namespace Finite
 
@@ -22,12 +22,12 @@ noncomputable def domainDecomp  {α : Type} [DecidableEq α]  {Φ : FeatModel F}
   {
     parentPC := pc
     parent := λ s => ∀ x ∈ s, P x
-    prec := λ s v => ∀ c : Config Φ, c ⊨ pc → ∀ x ∈ s ↓ c, ∃ T ∈ v ↓ c, x ∈ T
-    apply := λ _ v => v.toList.map (λ ⟨s,pc'⟩ => .pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') )
+    prec := λ (s, v) => ∀ c : Config Φ, c ⊨ pc → ∀ x ∈ s ↓ c, ∃ T ∈ v ↓ c, x ∈ T
+    apply := λ (_, v) => v.toList.map (λ ⟨s,pc'⟩ => .pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') )
   }
 
 lemma domainDecomp_apply {α : Type} [DecidableEq α] {Φ : FeatModel F} {P : α → Prop} {pc : PC F} {s : vFinset α F} {f : vFinFamily α F} :
-  (domainDecomp P pc (Φ:=Φ)).apply s f = f.toList.map (λ ⟨s,pc'⟩ => vGoal.pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') ) :=
+  (domainDecomp P pc (Φ:=Φ)).apply (s, f) = f.toList.map (λ ⟨s,pc'⟩ => vGoal.pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') ) :=
   rfl
 
 /- More general (but harder to use) version for general sets below -/
@@ -37,7 +37,7 @@ by
   rw [domainDecomp_apply] at subs
   rw [domainDecomp,vGoal.pc] at * ;
   simp only [set_idx, Subtype.forall, Prod.mk.eta, List.mem_map,Finset.mem_toList, Prod.exists, forall_exists_index, and_imp] at *
-  replace complete := complete c.1 c.2 hsat
+  replace complete := complete c hsat
   simp only [Subtype.coe_eta] at complete
   rw [semantics,vGoal.derive_pred]
   simp only [set_idx]
@@ -85,7 +85,7 @@ by
   rw [complete]
   rw [explode]
   simp
-  intros c hc x xmem
+  intros c x xmem
   have := vFinset.derive_mem_iff_exist_pc.mp xmem
   use {x}
   simp only [Finset.mem_singleton, and_true]
@@ -99,8 +99,8 @@ by
   rw [complete]
   rw [aggregate]
   simp
-  intros c hc x hx
-  have := Iff.mp <| vFinset.derive_mem_iff_exist_pc (F := F) (α := α) (c:=⟨c,hc⟩) (x:=x) (S:=S)
+  intros c x hx
+  have := Iff.mp <| vFinset.derive_mem_iff_exist_pc (F := F) (α := α) (c := c) (x:=x) (S:=S)
   replace this := this hx
   cases' this with p hp
   use (S.image Prod.fst).filter (λ c => ∃ k ∈ S, k.1 = c ∧ k.2 = p)
@@ -131,12 +131,12 @@ noncomputable def domainDecomp  {α : Type} [DecidableEq (Set α)]  {Φ : FeatMo
   {
     parentPC := pc
     parent := λ s => ∀ x ∈ s, P x
-    prec := λ s v => ∀ c : Config Φ, c ⊨ pc → ∀ x ∈ s ↓ c, ∃ T ∈ v ↓ c, x ∈ T
-    apply := λ _ v => v.toList.map (λ ⟨s,pc'⟩ => .pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') )
+    prec := λ (s, v) => ∀ c : Config Φ, c ⊨ pc → ∀ x ∈ s ↓ c, ∃ T ∈ v ↓ c, x ∈ T
+    apply := λ (_, v) => v.toList.map (λ ⟨s,pc'⟩ => .pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') )
   }
 
 lemma domainDecomp_apply {α : Type} [DecidableEq (Set α)]  {Φ : FeatModel F} {P : α → Prop} {pc : PC F} {s : vSet α F} {f : vFamily α F} :
-  (domainDecomp P pc (Φ:=Φ)).apply s f = f.toList.map (λ ⟨s,pc'⟩ => vGoal.pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') ) :=
+  (domainDecomp P pc (Φ:=Φ)).apply (s, f) = f.toList.map (λ ⟨s,pc'⟩ => vGoal.pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') ) :=
   rfl
 
 theorem domainDecompValid {α : Type} [DecidableEq (Set α)]  {Φ : FeatModel F} (P : α → Prop) (pc : PC F) : valid (domainDecomp P pc (Φ:=Φ)) :=
@@ -145,7 +145,7 @@ by
   rw [domainDecomp_apply] at subs
   rw [domainDecomp,vGoal.pc] at * ;
   simp only [set_idx, Subtype.forall, Prod.mk.eta, List.mem_map,Finset.mem_toList, Prod.exists, forall_exists_index, and_imp] at *
-  replace complete := complete c.1 c.2 hsat
+  replace complete := complete c hsat
   simp only [Subtype.coe_eta] at complete
   rw [semantics,vGoal.derive_pred]
   simp only [set_idx]
