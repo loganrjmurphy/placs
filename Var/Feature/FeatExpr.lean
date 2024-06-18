@@ -34,8 +34,4 @@ infix:52 "⇔" => iff
 @[reducible]
 def FeatModel (F : Type) [FeatureSet F] := FeatExpr F
 
-/- A presence condition is also just a special kind of feature expression-/
-@[reducible]
-def PC (F : Type) [FeatureSet F] := FeatExpr F
-
-instance : Union (FeatModel F) := ⟨ λ a b => a ||| b⟩
+-- instance : Union (FeatModel F) := ⟨ λ a b => a ||| b⟩

@@ -7,13 +7,14 @@ inductive Goal
 
 instance : Coe Prop Goal := ⟨Goal.atom⟩
 
+namespace Goal
+
 def semantics : Goal → Prop
 | .atom p => p
 | .pred P x => P x
 
 notation "⟦"G"⟧" => semantics G
 
-namespace Goal
 lemma semantics_atom {p : Prop} : semantics p = p := rfl
 lemma semantics_pred {α : Type} {P : α → Prop} {x : α} : semantics (.pred P x) = P x := rfl
 
@@ -107,20 +108,20 @@ lemma mem_roots_cons {g : Goal} {x : GSN} {xs : List GSN} : g ∈ roots (x::xs) 
     | inl h => left ; symm at h ; exact h
     | inr h => right ; rcases h with ⟨w, hw1,⟨hw2,hw3⟩⟩; use w ; rw [root_option_elim]; simp_all only [true_and, hw3, exists_const]
 
-def refines (g : Goal) (l : List Goal) : Prop := (∀ g' ∈ l, ⟦g'⟧) → ⟦g⟧
+def refines (strat : Goal × List Goal) : Prop := (∀ g' ∈ strat.snd, ⟦g'⟧) → ⟦strat.fst⟧
 
 @[reducible]
 def deductive : GSN → Prop
 | .nil => False
 | .evd _ _ => True
-| .strategy g children => refines g (roots children) ∧ children.attach.Forall (λ ⟨x,_⟩ => deductive x)
+| .strategy g children => refines (g, (roots children)) ∧ children.attach.Forall (λ ⟨x,_⟩ => deductive x)
 
 lemma not_deductive_nil : ¬ GSN.nil.deductive  := λ h => False.elim h
 lemma deductive_evd {g : Goal} {h : ⟦g⟧} : (g ↼ h).deductive := by rw [deductive]; trivial
 
 lemma deductive_evd_eq {g : Goal} {h : ⟦g⟧} : (g ↼ h).deductive = True := by rw [deductive]
 
-lemma deductive_decomp {g : Goal} {l : List GSN}  : (g ⇐ l).deductive ↔ refines g (roots l) ∧ ∀ x ∈ l, deductive x :=
+lemma deductive_decomp {g : Goal} {l : List GSN}  : (g ⇐ l).deductive ↔ refines (g, (roots l)) ∧ ∀ x ∈ l, deductive x :=
   by rw [deductive, List.forall_iff_forall_mem]
      simp only [List.mem_attach, forall_true_left, Subtype.forall]
 

@@ -34,6 +34,10 @@ namespace Config
 
 variable {Φ : FeatModel F}
 
+lemma conj_def {p q : FeatExpr F} : ⦃p &&& q⦄ = ⦃p⦄ ∩ ⦃q⦄ :=
+  by rw [FeatExpr.semantics]
+
+
 def sat  (c : Config Φ) (p : FeatExpr F) : Prop := c.val ∈ ⦃p⦄
 
 infix:50 (priority:=high) "⊨" => sat

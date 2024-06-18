@@ -1,4 +1,5 @@
 import Var.Lift
+import Var.Feature.PC
 set_option autoImplicit false
 
 universe u
@@ -12,7 +13,7 @@ namespace SPL
 /--
 Given a lifted set S and an element x, (S x) denotes the set of configurations in which x is an element of S.
 -/
-def vSet (α : Type u) (F : Type) [FeatureSet F] : Type u := α → PC F
+def vSet (α : Type u) (F : Type) [FeatureSet F]: Type u := α → FeatExpr F
 
 namespace vSet
 variable {F : Type} [FeatureSet F]
@@ -61,23 +62,23 @@ by
 
 end vSet
 
-instance {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} : Var (Set α × PC F) (Set α) Φ :=
+instance {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} : Var (Set α × FeatExpr F) (Set α) Φ :=
   ⟨ λ ⟨s,pc⟩  c => if c ⊨ pc then s else ∅  ⟩
 
-lemma derive_def_prod  {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} {t : (Set α × PC F)} {c : Config Φ} :
+lemma derive_def_prod  {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} {t : (Set α × FeatExpr F)} {c : Config Φ} :
     t ↓ c = if c ⊨ t.2 then t.1 else ∅ := rfl
 
-instance {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} : Var (Finset α × PC F) (Finset α) Φ :=
+instance {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} : Var (Finset α × FeatExpr F) (Finset α) Φ :=
   ⟨ λ ⟨s,pc⟩  c => if c ⊨ pc then s else ∅  ⟩
 
-lemma derive_def_prod_fin  {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} {t : (Finset α × PC F)} {c : Config Φ} :
+lemma derive_def_prod_fin  {α : Type u} {F : Type} [FeatureSet F] {Φ : FeatModel F} {t : (Finset α × FeatExpr F)} {c : Config Φ} :
     t ↓ c = if c ⊨ t.2 then t.1 else ∅ := rfl
 
 
 -- For finite sets, we can also just enumeratively annotate members.
 
 @[reducible]
-def vFinset (α: Type u) (F : Type) [FeatureSet F] := Finset ((α) × PC F)
+def vFinset (α: Type u) (F : Type) [FeatureSet F] := Finset ((α) × FeatExpr F)
 variable {α : Type u} {F : Type} [DecidableEq α] [FeatureSet F] {Φ : FeatModel F}
 
 namespace vFinset
@@ -105,7 +106,7 @@ lemma derive_def {S : vFinset α F} {c : Config Φ} : S ↓ c = derive S c := rf
 
 lemma derive_mem_iff_exist_pc
   {S : vFinset α F} {c : Config Φ} {x : α} :
-    x ∈ S ↓ c ↔ ∃ p : PC F, (x,p) ∈ S ∧ c ⊨ p :=
+    x ∈ S ↓ c ↔ ∃ p : FeatExpr F, (x,p) ∈ S ∧ c ⊨ p :=
 by
   rw [derive_def]
   unfold derive
@@ -186,11 +187,11 @@ end vFinFamily
 
 
 /- Paritions of Configuration Spaces  -/
-def disjointPCs {F: Type} [FeatureSet F] (pcs : List (PC F))  (Φ : FeatModel F)  : Prop := ∀ (c : Config Φ) (pc₁ pc₂ : PC F), pc₁ ∈ pcs → pc₂ ∈ pcs → c ⊨ pc₁ → c ⊨ pc₂ → pc₁ = pc₂
-def completePCs {F: Type} [FeatureSet F] (pcs : List (PC F))  (Φ : FeatModel F)  : Prop := ∀ (c : Config Φ), ∃ (pc : PC F), pc ∈ pcs ∧ c ⊨ pc
+def disjointPCs {F: Type} [FeatureSet F] (pcs : List (FeatExpr F))  (Φ : FeatModel F)  : Prop := ∀ (c : Config Φ) (pc₁ pc₂ : FeatExpr F), pc₁ ∈ pcs → pc₂ ∈ pcs → c ⊨ pc₁ → c ⊨ pc₂ → pc₁ = pc₂
+def completePCs {F: Type} [FeatureSet F] (pcs : List (FeatExpr F))  (Φ : FeatModel F)  : Prop := ∀ (c : Config Φ), ∃ (pc : FeatExpr F), pc ∈ pcs ∧ c ⊨ pc
 
 structure ConfPartition (Φ : FeatModel F) where
-    pcs: List (PC F)
+    pcs: List (FeatExpr F)
     disjoint: disjointPCs pcs Φ
     complete: completePCs pcs Φ
 
