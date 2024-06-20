@@ -5,10 +5,9 @@ set_option autoImplicit false
 universe u
 
 /- For convenience, we use `Family α` as an alias for `Finset (Set α)` -/
-abbrev Family (α : Type u) := Finset (Set α)
-abbrev FinFamily (α : Type u) := Finset (Finset α)
+abbrev Family (α : Type u) := List (Set α)
+abbrev FinFamily (α : Type u) := List (Finset α)
 /- Our encoding of variational sets is based on the formalization by Shahin: https://github.com/ramyshahin/variability/blob/master/Var/liftedSet.lean -/
-namespace SPL
 
 /--
 Given a lifted set S and an element x, (S x) denotes the set of configurations in which x is an element of S.
@@ -112,8 +111,58 @@ by
   unfold derive
   simp only [Finset.mem_image, Finset.mem_filter, Prod.exists, exists_and_right, exists_eq_right]
 end vFinset
+
+
+@[reducible]
+def vList (α: Type u) (F : Type) [FeatureSet F] := List ((α) × FeatExpr F)
+variable {α : Type u} {F : Type} [DecidableEq α] [FeatureSet F] {Φ : FeatModel F}
+
+namespace vList
+
+def derive  (S : vList α F) : Config Φ → List α :=
+  λ c => (S.filter (λ ⟨_,p⟩ => c ⊨ p)).map Prod.fst
+
+
+instance : Var (vList α F) (List α) Φ :=
+  ⟨derive⟩
+
+-- Coerce an explicit variational finset to variational set using choice
+-- noncomputable def toSet (s : vFinset α F) : vSet α F :=
+--   λ x =>
+--     let elems := s.toList
+--     match elems.find? (λ ⟨k,_⟩ ↦ k=x) with
+--     | none => ⊥
+--     | some (_,pc) => pc
+
+
+-- noncomputable instance : Coe (vFinset α F) (vSet α F) := ⟨toSet⟩
+
+lemma derive_def {S : vList α F} {c : Config Φ} : S ↓ c = derive S c := rfl
+
+lemma derive_mem_iff_exist_pc
+  {S : vList α F} {c : Config Φ} {x : α} :
+    x ∈ S ↓ c ↔ ∃ p : FeatExpr F, (x,p) ∈ S ∧ c ⊨ p :=
+by
+  rw [derive_def]
+  unfold derive
+  simp only [List.mem_map, Prod.exists, exists_and_right, exists_eq_right]
+  constructor
+  . intro h
+    cases' h with h t
+    rw [List.mem_filter] at t
+    simp_all
+    use h
+  . intro h
+    cases' h with h t
+    use h
+    rw [List.mem_filter]
+    simp_all
+
+end vList
+
+
 -- finite families of annotated sets (note : not sets of annotated elements)
-abbrev vFamily (α : Type u) (F : Type) [FeatureSet F] := vFinset (Set α) F
+abbrev vFamily (α : Type u) (F : Type) [FeatureSet F] := vList (Set α) F
 
 namespace vFamily
 
@@ -123,11 +172,11 @@ namespace vFamily
 -- Another alternative (which we should pursue) is to restrict this variational type to sets over decidable predicates
 def derive [DecidableEq (Set α)] (f : vFamily α F) (c : Config Φ) : Family α :=
   let sat_set := f.filter (λ ⟨_,p⟩ => c ⊨ p)
-  sat_set.image Prod.fst
+  sat_set.map Prod.fst
 
 instance [DecidableEq (Set α)] : Var (vFamily α F) (Family α) Φ := ⟨derive⟩
 lemma derive_def  [DecidableEq (Set α)] {f : vFamily α F} {c : Config Φ} :
-  f ↓ c = (f.filter (λ ⟨_,p⟩ => c ⊨ p)).image Prod.fst := rfl
+  f ↓ c = (f.filter (λ ⟨_,p⟩ => c ⊨ p)).map Prod.fst := rfl
 
 lemma derive_mem_iff  [DecidableEq (Set α)] {f : vFamily α F} {s : Set α} {c : Config Φ} :
   s ∈ f ↓ c ↔ ∃ t ∈ f, t.1 = s ∧ c ⊨ t.2 :=
@@ -137,30 +186,39 @@ lemma derive_mem_iff  [DecidableEq (Set α)] {f : vFamily α F} {s : Set α} {c 
       rw [derive_def] at h
       simp only [Finset.mem_image, Finset.mem_filter, Prod.exists, exists_and_right, exists_eq_right] at *
       use s
-      simp only [true_and] ; exact h
+      simp_all
+      cases' h with x hx
+      use x
+      rw [List.mem_filter] at hx
+      simp_all
     . intro h
       rw [derive_def]
       simp only [Finset.mem_image, Finset.mem_filter, Prod.exists, exists_and_right, exists_eq_right]
       rcases h with ⟨t, h1,h2,h3⟩
+      rw [List.mem_map]
+      simp
       use t.2
       rw [← h2]
-      exact ⟨h1, h3⟩
+      rw [List.mem_filter]
+      simp_all
+      cases' t
+      simp_all
 
 end vFamily
 
-abbrev vFinFamily (α : Type u) (F : Type) [FeatureSet F] := vFinset (Finset α) F
+abbrev vFinFamily (α : Type u) (F : Type) [FeatureSet F] := vList (Finset α) F
 
 
 namespace vFinFamily
 
 def derive [DecidableEq α] (f : vFinFamily α F) (c : Config Φ) : FinFamily α :=
   let sat_set := f.filter (λ ⟨_,p⟩ => c ⊨ p)
-  sat_set.image Prod.fst
+  sat_set.map Prod.fst
 
 instance : Var (vFinFamily α F) (FinFamily α) Φ := ⟨derive⟩
 
 lemma derive_def  [DecidableEq α] {f : vFinFamily α F} {c : Config Φ} :
-  f ↓ c = (f.filter (λ ⟨_,p⟩ => c ⊨ p)).image Prod.fst := rfl
+  f ↓ c = (f.filter (λ ⟨_,p⟩ => c ⊨ p)).map Prod.fst := rfl
 
 
 lemma derive_mem_iff [DecidableEq α] {f : vFinFamily α F} {s : Finset α} {c : Config Φ} :
@@ -171,14 +229,20 @@ lemma derive_mem_iff [DecidableEq α] {f : vFinFamily α F} {s : Finset α} {c :
       rw [derive_def] at h
       simp only [Finset.mem_image, Finset.mem_filter, Prod.exists, exists_and_right, exists_eq_right] at *
       use s
-      simp only [true_and] ; exact h
+      simp only [true_and] ;
+      rw [List.mem_map] at h
+      cases' h with w hw
+      use w.2
+      rw [List.mem_filter] at hw
+      aesop
     . intro h
       rw [derive_def]
       simp only [Finset.mem_image, Finset.mem_filter, Prod.exists, exists_and_right, exists_eq_right]
       rcases h with ⟨t, h1,h2,h3⟩
-      use t.2
-      rw [← h2]
-      exact ⟨h1, h3⟩
+      rw [List.mem_map]
+      use t
+      rw [List.mem_filter]
+      aesop
 
 end vFinFamily
 
@@ -219,5 +283,3 @@ def index {α : Type u} : Lifted α Φ → Config Φ → α
 | .mk confs xs len, c => xs.get <| (findIdx confs c).cast len
 
 instance {α : Type u} : Var (Lifted α Φ) α Φ := ⟨λ a c => index a c⟩
-
-end SPL

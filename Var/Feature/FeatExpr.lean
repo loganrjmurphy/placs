@@ -34,4 +34,7 @@ infix:52 "⇔" => iff
 @[reducible]
 def FeatModel (F : Type) [FeatureSet F] := FeatExpr F
 
+@[reducible]
+def PC (F : Type) [FeatureSet F] := FeatExpr F
+
 -- instance : Union (FeatModel F) := ⟨ λ a b => a ||| b⟩

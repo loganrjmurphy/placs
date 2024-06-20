@@ -22,30 +22,32 @@ opaque V : LTS → CTL → Bool
 opaque AllBehaviours : Set Traces
 opaque TargetProperty : Set Traces
 
-opaque MIPS : LTS
-opaque AlarmSafe : CTL
+opaque M_SYS : LTS
+opaque ALARM_SPEC : CTL
 
 -- Evidence --
-axiom noViolationsEvd : V MIPS AlarmSafe = true
+axiom noViolationsEvd : V M_SYS ALARM_SPEC = true
 axiom verifierSoundEvd : ∀ M' : LTS, ∀ P' : CTL, V M' P' = true ↔ execs M' ⊆ words P'
-axiom specCorrectEvd :  words AlarmSafe = TargetProperty
+axiom specCorrectEvd :  words ALARM_SPEC = TargetProperty
 
 -- Predicated --
-def Refines : Set Traces × Set Traces → Prop :=
+def Inclusion : Set Traces × Set Traces → Prop :=
   λ ⟨S,T⟩ => S ⊆ T
 
-def InputsCorrect : LTS × CTL → Prop :=
-λ ⟨M,P⟩ => execs M = AllBehaviours ∧ words P = TargetProperty
+def modelCorrect : LTS × Set Traces → Prop :=
+  λ ⟨M,B⟩ => execs M = B
+
+def specCorrect : CTL × Set Traces → Prop :=
+  λ ⟨φ,P⟩ => words φ = P
 
 def Verified : LTS × CTL → Prop := λ ⟨M,P⟩ => V M P = true
 
 def VerifierSound : Prop := ∀ M' : LTS, ∀ P' : CTL, V M' P' = true ↔ execs M' ⊆ words P'
 
-open scoped Goal GSN
-
-def IPS_Safety : GSN :=
-  Refines ⬝ ⟨AllBehaviours,TargetProperty⟩ ⇐                 -- G0
-    [ InputsCorrect ⬝ ⟨MIPS,AlarmSafe⟩ ⇐ [],                   -- G1
-      Verified ⬝ ⟨MIPS,AlarmSafe⟩ ↼ noViolationsEvd,          -- G3
-      VerifierSound ↼ verifierSoundEvd                       -- G4
+def gsn_example : GSN :=
+  .strategy (.pred Inclusion ⟨AllBehaviours,TargetProperty⟩)
+    [ (.strategy (.pred modelCorrect ⟨M_SYS,AllBehaviours⟩) []),
+      (.evd (.pred specCorrect ⟨ALARM_SPEC,TargetProperty⟩) specCorrectEvd),
+      (.evd (.pred Verified ⟨M_SYS,ALARM_SPEC⟩) noViolationsEvd),
+      (.evd (.atom VerifierSound) verifierSoundEvd)
     ]
