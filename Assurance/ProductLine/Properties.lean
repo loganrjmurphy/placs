@@ -28,11 +28,11 @@ def recStrategyPred (P : vGoal Φ → List (vGSN Φ) → Prop) : vGSN Φ → Pro
 | .evd _ _ => True
 | .strategy parent children => P parent children ∧ children.attach.Forall (λ ⟨x,_⟩ => recStrategyPred P x)
 
-lemma recStrategyPred_evd {P : vGoal Φ → List (vGSN Φ) → Prop} {g : vGoal Φ} {e : g.varProof} : recStrategyPred P (g ↼ e) :=
+lemma recStrategyPred_evd {P : vGoal Φ → List (vGSN Φ) → Prop} {g : vGoal Φ} {e : g.varProof} : recStrategyPred P (.evd g e) :=
   by rw [recStrategyPred] ; trivial
 
 lemma recStrategyPred_strat {P : vGoal Φ → List (vGSN Φ) → Prop} {g : vGoal Φ} {l : List (vGSN Φ)} :
-  recStrategyPred P (g ⇐ l) ↔ P g l ∧ l.attach.Forall (λ ⟨x,_⟩ => recStrategyPred P x) :=
+  recStrategyPred P (.strategy g l) ↔ P g l ∧ l.attach.Forall (λ ⟨x,_⟩ => recStrategyPred P x) :=
   by rw [recStrategyPred]
 
 def refines (g : vGoal Φ) (l : List (vGSN Φ)) : Prop :=
@@ -42,9 +42,9 @@ def developed : vGSN Φ → Prop := recStrategyPred subtreesDeveloped
 
 def deductive : vGSN Φ → Prop := recStrategyPred refines
 
-lemma deductive_evd {g : vGoal Φ} {e : g.varProof} : deductive (g ↼ e) := recStrategyPred_evd
+lemma deductive_evd {g : vGoal Φ} {e : g.varProof} : deductive (.evd g  e) := recStrategyPred_evd
 
-lemma deductive_strat {g : vGoal Φ} {l : List (vGSN Φ)} : deductive (g ⇐ l) ↔ refines g l ∧ ∀ g' ∈ l, deductive g' :=
+lemma deductive_strat {g : vGoal Φ} {l : List (vGSN Φ)} : deductive (.strategy g l) ↔ refines g l ∧ ∀ g' ∈ l, deductive g' :=
   by
     have := recStrategyPred_strat (P:= (λ g gs => refines g  gs)) (g:=g) (l:=l)
     rw [deductive,this] ; clear this
@@ -57,23 +57,23 @@ def wf_strat_def {g : vGoal Φ} {children : List (vGSN Φ)} : wf_strat_pred g ch
 
 def wf : vGSN Φ → Prop := recStrategyPred wf_strat_pred
 
-lemma wf_evd {g : vGoal Φ} {e : g.varProof} : wf (g ↼ e) := recStrategyPred_evd
+lemma wf_evd {g : vGoal Φ} {e : g.varProof} : wf (.evd g e) := recStrategyPred_evd
 
 lemma wf_strat {g : vGoal Φ} {l : List (vGSN Φ)} :
-   wf (g ⇐ l) ↔ (wf_strat_pred g l) ∧ ∀ g' ∈ l, wf g' :=
+   wf (.strategy g  l) ↔ (wf_strat_pred g l) ∧ ∀ g' ∈ l, wf g' :=
   by
     have := recStrategyPred_strat (P:= wf_strat_pred) (g:=g) (l:=l)
     rw [wf,this] ; clear this
     simp only [and_congr_right_iff, List.forall_iff_forall_mem]
     simp only [List.mem_attach, true_implies, Subtype.forall, implies_true]
 
-lemma subgoal_wf {g : vGoal Φ} {l : List (vGSN Φ)} (h: wf (g ⇐ l)) (g' : vGSN Φ) (hmem : g' ∈ l) : wf g' :=
+lemma subgoal_wf {g : vGoal Φ} {l : List (vGSN Φ)} (h: wf (.strategy g l)) (g' : vGSN Φ) (hmem : g' ∈ l) : wf g' :=
   by rw [wf_strat] at h
      exact h.2 g' hmem
 
 theorem derived_subchildren_deductive
   {c : Config Φ} {g : vGoal Φ} {gs : List (vGSN Φ)}
-  (h : (g⇐gs).deductive) (hc : c⊨(g⇐gs).root.pc) : (∀ g' ∈ GSN.roots (gs↓c), ⟦g'⟧) → ⟦g↓c⟧ :=
+  (h : (vGSN.strategy g gs).deductive) (hc : c⊨ g.pc) : (∀ g' ∈ GSN.roots (gs↓c), ⟦g'⟧) → ⟦g↓c⟧ :=
  by intro subs
     rw [deductive_strat] at h
     cases' h with href hsubs

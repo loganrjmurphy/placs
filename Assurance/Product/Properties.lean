@@ -9,12 +9,16 @@ def supported : GSN → Bool
 | .strategy _ [] => False
 | .strategy _ (h::t) => (h::t).attach.all (λ ⟨x,_ ⟩ => supported x)
 
+@[simp]
 lemma supported_nil : supported .nil = false := rfl
 
+@[simp]
 lemma supported_evd {g : Goal} {h : ⟦g⟧} : supported (.evd g h) = true := by rw [supported]; trivial
 
+@[simp]
 lemma supported_empty {g : Goal}  : supported (.strategy g []) = false := rfl
 
+@[simp]
 lemma supported_cons {g : Goal} {l : List GSN} : supported (.strategy g l) ↔ l ≠ [] ∧ ∀ x ∈ l, supported x :=
   by cases l <;> rw [supported] <;> simp
 
@@ -33,9 +37,10 @@ def deductive : GSN → Prop
 
 lemma not_deductive_nil : ¬ GSN.nil.deductive := λ h => by rwa [deductive] at h
 
-lemma evd_deductive {g : Goal} {h : ⟦g⟧} : (g ↼ h).deductive := by rw [deductive]; trivial
+lemma evd_deductive {g : Goal} {h : ⟦g⟧} : (GSN.evd g h).deductive := by rw [deductive]; trivial
 
-lemma strat_deductive_iff {g : Goal} {l : List GSN} : (g ⇐ l).deductive ↔ (((∀ g' ∈ (roots l), ⟦g'⟧) → ⟦g⟧) ∧ ∀ x ∈ l, deductive x) :=
+@[simp]
+lemma strat_deductive_iff {g : Goal} {l : List GSN} : (GSN.strategy g l).deductive ↔ ((∀ g' ∈ (roots l), ⟦g'⟧) → ⟦g⟧) ∧ ∀ x ∈ l, deductive x :=
   by
     rw [deductive] ; simp only [refines_def, and_congr_right_iff,List.forall_iff_forall_mem, List.mem_attach, true_implies, Subtype.forall]
 

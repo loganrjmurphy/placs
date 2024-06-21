@@ -7,8 +7,6 @@ inductive GSN
 
 
 namespace GSN
-scoped infix:80 "⇐" => GSN.strategy
-scoped infix:80 "↼" => GSN.evd
 
 universe u
 
@@ -34,7 +32,6 @@ def inductionOn
     (List.forall_iff_forall_mem.mp trivial)
     (λ x xs hx ih => by simp only at *; exact List.forall_mem_cons.mpr ⟨hx, ih⟩)
 
-/- Getting goals (roots) from GSN trees -/
 
 @[reducible]
 def root? : GSN → Option Goal
@@ -47,10 +44,13 @@ def root : Π (G : GSN), (_ :G ≠ .nil) → Goal
 | .evd g _, _ => g
 | .strategy g _, _ => g
 
-def evd_root {g : Goal} {h : ⟦g⟧} : root (g ↼ h) nofun = g := rfl
+@[simp]
+lemma evd_root {g : Goal} {h : ⟦g⟧} : root (.evd g h) nofun = g := rfl
 
-def strategy_root {g : Goal} {l : List GSN} : root (g ⇐ l) (nofun) = g := rfl
+@[simp]
+lemma strategy_root {g : Goal} {l : List GSN} : root (.strategy g l) (nofun) = g := rfl
 
+@[simp]
 lemma root_none_iff {G : GSN} : G.root? = none ↔ G = .nil := by
   cases G <;> simp only
 
@@ -62,6 +62,7 @@ lemma ne_nil_of_some_root {G : GSN} {g : Goal} : (G.root? = some g) →  G ≠ .
   have := root_some_iff_exists G
   intro h ; exact this.mp (Exists.intro g h.symm)
 
+@[simp]
 lemma root_opt_elim {G : GSN} {g : Goal} {h : G ≠ nil} : some g = G.root? ↔ G.root h = g :=
 by
   rw [root?]
@@ -70,7 +71,6 @@ by
   | _ => rw [Option.some.injEq] ; tauto
 
 def roots (l : List GSN) : List Goal := l.map GSN.root? |> List.reduceOption
-
 
 lemma not_mem_roots_nil {g: Goal} : ¬ (g ∈ roots []) :=
   by rw [roots,List.reduceOption_mem_iff,List.map_nil] ; exact List.not_mem_nil (some g)
@@ -109,6 +109,7 @@ lemma mem_roots_cons {g : Goal} {x : GSN} {xs : List GSN} : g ∈ roots (x::xs) 
 def undevGoals : List Goal → List GSN :=
   List.map (GSN.strategy . [])
 
+@[simp]
 lemma undevGoals_roots_inv (l : List Goal) : GSN.roots (undevGoals l) = l :=
   by
     rw [GSN.roots, undevGoals,List.reduceOption]

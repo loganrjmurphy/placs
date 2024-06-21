@@ -13,7 +13,6 @@ structure vAnalyticTemplate (A B C α β γ: Type) (Φ : FeatModel 𝔽) [Var α
  outputPred : C → Prop
  fpred : B → C → Prop
 
-
 namespace vAnalyticTemplate
 
 def vAnalyticTemplate_apply
@@ -47,7 +46,7 @@ by
   rcases inp with ⟨a, d⟩
   intros subs
   simp only
-  rw [vGoal.derive_pred, Goal.semantics_pred]
+  rw [vGoal.derive_pred, Goal.pred_semantics]
   rw [vAnalyticTemplate_apply] at subs
   simp at subs
   rw [vTemplate.list_vgoal_derive_def] at subs

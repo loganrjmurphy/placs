@@ -13,9 +13,6 @@ namespace vGSN
 
 variable {Φ : FeatModel F}
 
-scoped infix:80 "⇐" => strategy
-scoped infix:80 "↼" => vGSN.evd
-
 @[induction_eliminator]
 def inductionOn
   (motive : vGSN Φ → Prop)
@@ -120,13 +117,7 @@ def mapFilter_cons_neg
     rw [mapFilterNil]
     rw [attach_map_cons_neg]
     simp_all
-      -- rw [mapFilterNil]
-      -- rw [List.attach, List.attachWith]
-      -- simp [h']
-      -- rw [mapFilterNil]
-      -- rw [List.attach]
-      -- rw [List.attachWith]
-      -- aesop
+
 
 universe u v
 
@@ -153,15 +144,15 @@ def root : vGSN Φ → vGoal Φ
 | .evd g _ => g
 | strategy g _ => g
 
-lemma evd_root {g : vGoal Φ} {e : g.varProof} : root (g ↼ e) = g := rfl
-lemma strategy_root {g : vGoal Φ} {l : List (vGSN Φ)} : root (g ⇐ l) = g := rfl
+lemma evd_root {g : vGoal Φ} {e : g.varProof} : root (.evd g  e) = g := rfl
+lemma strategy_root {g : vGoal Φ} {l : List (vGSN Φ)} : root (.strategy g l) = g := rfl
 
 lemma derive_evd_sat_iff {c : Config Φ} {g : vGoal Φ} {e : g.varProof}:
-   (c ⊨ g.pc) ↔ (g ↼ e) ↓ c ≠ GSN.nil := by
+   (c ⊨ g.pc) ↔ (vGSN.evd g e) ↓ c ≠ GSN.nil := by
   rw [derive_def,derive]; by_cases hc : c ⊨ g.pc <;> simp [hc]
 
 lemma derive_strat_sat_iff {c : Config Φ} {g : vGoal Φ} {l : List (vGSN Φ)}  : c ⊨ g.pc ↔
-  ((g ⇐ l) ↓ c) ≠ .nil :=
+  ((vGSN.strategy g l) ↓ c) ≠ .nil :=
   by rw [derive_def,derive]
      by_cases hc : c ⊨ g.pc <;> (simp [hc])
 
@@ -172,13 +163,13 @@ lemma derive_sat_iff_ne_nil {c : Config Φ} {g : vGSN Φ} : c ⊨ g.root.pc ↔ 
 
 lemma derive_evd_of_sat
   {c : Config Φ} {g : vGoal Φ} {e : g.varProof} (h : c ⊨ g.pc) :
-    (g ↼ e) ↓ c = (GSN.evd (g ↓ c) (e c h)) :=
+    (vGSN.evd g e) ↓ c = (GSN.evd (g ↓ c) (e c h)) :=
     by rw [derive_def,derive]
        by_cases hc : c ⊨ g.pc <;> (simp [hc]) ; contradiction
 
 lemma derive_strat_of_sat
   {c : Config Φ} {g : vGoal Φ} {l : List (vGSN Φ)} (h : c ⊨ g.pc)  :
-     ((g ⇐ l) ↓ c) = (GSN.strategy (g ↓ c) (l ↓ c)) :=
+     ((vGSN.strategy g l) ↓ c) = (GSN.strategy (g ↓ c) (l ↓ c)) :=
     by
       rw [derive_def,derive]
       simp only [h, ↓reduceIte, GSN.strategy.injEq, true_and]

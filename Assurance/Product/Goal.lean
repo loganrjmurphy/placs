@@ -15,7 +15,10 @@ def semantics : Goal → Prop
 
 notation "⟦"G"⟧" => semantics G
 
-lemma semantics_atom {p : Prop} : semantics p = p := rfl
-lemma semantics_pred {α : Type} {P : α → Prop} {x : α} : semantics (.pred P x) = P x := rfl
+@[simp]
+lemma atom_semantics {p : Prop} : semantics p = p := rfl
+
+@[simp]
+lemma pred_semantics {α : Type} {P : α → Prop} {x : α} : semantics (.pred P x) = P x := rfl
 
 end Goal

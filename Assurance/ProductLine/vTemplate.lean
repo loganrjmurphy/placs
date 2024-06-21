@@ -7,15 +7,6 @@ open vSet vGSN
 
 variable {F : Type} [FeatureSet F]
 
-
--- structure vTemplate (A D α γ : Type) (Φ : FeatModel F) [Var α A Φ] [Var γ D Φ] where
---   parent : A → Prop
---   parentPC : PC F
---   apply : α × γ → List (vGSN Φ)
---   prec : α × γ → (Config Φ → Prop) := λ _ _ => True
-
-
-
 structure vTemplate' (A D α γ : Type) (Φ : FeatModel F) [Var α A Φ] [Var γ D Φ] where
   parent : A → Prop
   parentPC : PC F
@@ -29,26 +20,10 @@ variable {Φ : FeatModel F}
 
 variable {A D α γ : Type} [Var α A Φ] [Var γ D Φ]
 
--- def valid  (T : vTemplate A D α γ Φ) : Prop :=
---  ∀ x d, (∀ c : Config Φ, c ⊨ T.parentPC → T.prec (x, d) c) →
---   vGSN.refines (vGoal.pred T.parentPC T.parent x) (T.apply (x, d))
-
 instance : Var (Config Φ → Prop) Prop Φ := ⟨λ p c => p c⟩
 
 lemma prop_derive_def {p' : Config Φ → Prop} {c : Config Φ} : p' ↓ c ↔ p' c :=
   Iff.rfl
-
--- def lift
---   (T : Template A D)
---   (apply' : α × γ → List (vGSN Φ))
---   (prec' : α × γ → (Config Φ →  Prop))
---   (pc : PC F) : vTemplate A D α γ Φ :=
---   {
---     parentPC := pc
---     parent := T.parent
---     apply := apply'
---     prec := prec'
---   }
 
 def lift'
   (T : Template A D)
@@ -61,11 +36,9 @@ def lift'
     prec := λ (x,d) => [Φ|pc] T.prec (x,d)
   }
 
-
 def lift_precondition
   (prec : A × D → Prop) : α × γ → Prop :=
   λ ⟨x,d⟩ => [Φ] prec (x,d)
-
 
 def lift_precondition_restrict
   (prec : A × D → Prop) (φ : PC F) : α × γ → Prop :=
@@ -78,8 +51,6 @@ def lift_precondition_restrict_eq
 def valid'  (T : vTemplate' A D α γ Φ) : Prop :=
  ∀ x d, T.prec (x, d) →
   vGSN.refines (vGoal.pred T.parentPC T.parent x) (T.apply (x, d))
-
-
 
 
 def valid_lift_prec_iff
@@ -135,42 +106,6 @@ def lift_valid'
     rw [← happly] at h
     exact h
 
-
-
--- def lift_valid
---   (T : Template A D)
---   (apply' : α × γ → List (vGSN Φ))
---   (prec' : α × γ → (Config Φ → Prop))
---   (happly : isLift (Φ := Φ) T.apply apply')
---   (hprec : isLift (Φ := Φ) T.prec prec')
---    (pc : PC F) :
---   T.valid → (lift T apply' prec' pc).valid :=
---   by
---     intro h
---     rw [lift,valid]
---     intros x d h'
---     simp at *
---     rw [refines]
---     intros c hc
---     replace h' := h' c hc
---     rw [isLift] at hprec
---     replace hprec := hprec (x,d) c
---     rw [prop_derive_def] at hprec
---     rw [hprec] at h'; clear hprec
---     rw [GSN.refines]
---     simp only
---     intros subs
---     rw [prod_derive_def] at * ; simp only
---     rw [vGoal.derive_pred, Goal.semantics_pred]
---     rw [Template.valid] at h
---     replace h := h (x ↓ c, d ↓ c) h'
---     apply h  ; clear h
---     intros g' hg'
---     replace subs := subs g'
---     apply subs
---     simp at *
---     rwa [happly (x,d) c]
-
 def undevGoals  : List (vGoal Φ) → List (vGSN Φ) := List.map (vGSN.strategy . [])
 
 lemma undevGoals_roots_inv (l : List (vGoal Φ)) : vGSN.roots (undevGoals l) = l :=
@@ -181,8 +116,6 @@ lemma undevGoals_roots_inv (l : List (vGoal Φ)) : vGSN.roots (undevGoals l) = l
     | cons h t ih =>
       rw [List.map_cons, Function.comp_apply, List.cons.injEq, vGSN.root]
       simp only [true_and, ih]
-
--- namespace Finite
 
 open Classical
 
@@ -262,32 +195,32 @@ theorem undev_comm {Φ : FeatModel F} {l : List (vGoal Φ)} {c : Config Φ} :
         rw [← GSN.undevGoals]
         rw [← list_vgoal_derive_def]
         rw [← ih]
-        -- rw [List.attach,List.attachWith]
-        -- simp
-        have : (h ⇐ [])↓ c ≠ GSN.nil :=
+        have : (vGSN.strategy h [])↓ c ≠ GSN.nil :=
           by
-            have := vGSN.derive_sat_iff_ne_nil (g:=h⇐[]) (c:=c)
+            have := vGSN.derive_sat_iff_ne_nil (g:= vGSN.strategy h []) (c:=c)
             rw [vGSN.strategy_root] at this
             rwa [← this]
         rw [undevGoals]
         simp
         rw [vGSN_list_derive_def]
         simp
-        rw [mapFilter_cons_pos]
-        simp
-        rw [vGSN.derive_strat_of_sat]
-        rfl
-        assumption
-        simp_all only [ne_eq, not_false_eq_true]
-        simp
-        aesop
+        rw [mapFilter_cons_pos (h:=vGSN.strategy h []) (hh := by simp)]
+        . simp
+          rw [vGSN.derive_strat_of_sat]
+          simp
+          rw [vGSN_list_derive_def]
+          simp
+          rw [mapFilterNil, attachedMap]
+          simp
+          exact hc
+        . simpa
       . simp [hc]
         simp [GSN.undevGoals]
         rw [← GSN.undevGoals]
         rw [← list_vgoal_derive_def]
         rw [← ih]
-        have : (h ⇐ [])↓ c = GSN.nil :=by
-            have := vGSN.derive_sat_iff_ne_nil (g:=h⇐[]) (c:=c)
+        have : (vGSN.strategy h [])↓ c = GSN.nil :=by
+            have := vGSN.derive_sat_iff_ne_nil (g:= vGSN.strategy h []) (c:=c)
             rw [vGSN.strategy_root] at this
             aesop
         rw [undevGoals]
@@ -296,92 +229,6 @@ theorem undev_comm {Φ : FeatModel F} {l : List (vGoal Φ)} {c : Config Φ} :
         . rw [vGSN_list_derive_def]
         . simp
         . simpa
-
-
-
-          -- simp [this]
-        -- rw [vGSN_list_derive_def]
-        -- simp
-        -- rw [← List.attachWith]
-        -- constructor
-        -- . admit
-        -- . admit
-
-        -- rw [undevGoals] at *
-        -- rw [list_vgoal_derive_def, vGSN_list_derive_def] at *
-        -- simp only [List.map_cons] at *
-        -- rw [mapFilterNil] at *
-        -- rw [ih]
-        -- rw [GSN.undevGoals] at *
-        -- simp only [List.map_cons] at *
-        -- rw [List.attach,List.attachWith] at *
-        -- simp only [List.pmap, List.filterMap_cons] at *
-        -- have : (h ⇐ [])↓ c ≠ GSN.nil :=
-        --   by
-        --     have := vGSN.derive_sat_iff_ne_nil (g:=h⇐[]) (c:=c)
-        --     rw [vGSN.strategy_root] at this
-        --     rwa [← this]
-        -- simp only [this, ↓reduceIte, List.cons.injEq]
-        -- constructor
-        -- . rw [vGSN.derive_strat_of_sat hc]
-        --   rfl
-        -- .
-
-
-        -- simp only [ne_eq, decide_not, List.map_eq_map]
-        -- rw [GSN.undevGoals] at *
-        -- simp [hc]
-        -- rw [← list_vgoal_derive_def]
-        -- rw [← ih]
-        -- rw [List.attach,List.attachWith]
-        -- simp only [List.pmap, List.map_cons]
-        -- rw [List.filter_cons]
-        -- simp only [Bool.not_eq_true', decide_eq_false_iff_not, ite_not]
-        -- rw [vGSN.derive_strat_of_sat hc]
-        -- simp only [↓reduceIte, List.cons.injEq, GSN.strategy.injEq, true_and]
-        -- constructor
-        -- . rw [vGSN_list_derive_def, mapFilterNil]; simp
-        -- . rw [ih]
-
-
-
-
-
-            --  = []
-
-
-
-
-
--- lemma domDecompLiftApply
---   {α : Type} [DecidableEq α]  {Φ : FeatModel F}
---   {P : α → Prop} :
---   isLift (Φ:=Φ) (α := vFamily α F) (β := List (vGSN Φ)) (DomainDecomp.apply P) (vDomainDecomp.apply P)  :=
--- by
---   intros v c
---   rw [vDomainDecomp.apply]
---   rw [DomainDecomp.apply]
---   simp
---   rw [foobar]
---   apply congrArg
---   rw [list_vgoal_derive_def]
---   simp
---   rw [vFamily.derive_def]
---   simp
---   induction v with
---   | nil => simp_all
---   | cons h t ih =>
---     simp_all
---     rw [vGoal.pc] at *
---     simp
---     by_cases hc : c ⊨ h.2
---     . simp_all
---       rw [vGoal.derive_pred]
---       simp
---       rw [derive_def_prod]
---       aesop
---     . simp_all
-
 
 lemma domDecompLiftApply
   {α : Type} [DecidableEq α]  {Φ : FeatModel F}
@@ -412,20 +259,6 @@ by
 
 
 
-
-  -- rw [undevGoals, GSN.undevGoals]
-  -- simp
-  -- simp only [Prod.mk.eta, List.map_map,vGSN_list_derive_def,mapFilterNil,ne_eq, decide_not, List.map_eq_map]
-  -- induction v using Finset.induction_on with
-  -- | empty =>
-  --   rw [Finset.toList_empty,vFamily.derive_def];
-  --   simp only [List.map_nil, List.attach_nil,List.filter_nil, Finset.filter_empty, Finset.image_empty, Finset.toList_empty]
-  --   rw [List.filterMap]
-  -- | @insert x v h ih =>
-  --   rename_i inst Φ_1 α_1 inst_1 inst_2 α_2 inst_3 inst_4
-  --   obtain ⟨fst, snd⟩ := x
-  --   rw [vFamily.derive_def]
-
 noncomputable def vDomainDecomp  {α : Type} [DecidableEq α] {Φ : FeatModel F} (P : α → Prop) (pc : PC F) : vTemplate' (Set α) (Family α) (vSet α F) (vFamily α F) Φ :=
   {
     parentPC := pc
@@ -433,9 +266,6 @@ noncomputable def vDomainDecomp  {α : Type} [DecidableEq α] {Φ : FeatModel F}
     prec := λ (s, v) => vComplete_restrict (Φ:=Φ) s v pc
     apply := λ (_,v) => vDomainDecomp.apply P v
   }
-
--- lemma fingers {s : vSet α F} {v : vFamily α F} {P : α → Prop} {pc : PC F}  :
---   domainDecomp P pc = (lift' domainDecomp (domainDecomp P pc).apply)
 
 
 
@@ -512,38 +342,6 @@ by
   exact domainDecompValid
 
 
-  -- intros s f complete c hsat subs
-  -- rw [domainDecomp_apply] at subs
-  -- unfold vDomainDecomp at *
-  -- simp at *
-  -- rw [prod_derive_def] at *
-  -- simp only
-  -- rw [vGoal.derive_pred, Goal.semantics]
-  -- simp
-  -- intros x hx
-  -- simp at subs
-  -- rw [foobar] at subs
-  -- rw [GSN.undevGoals_roots_inv] at subs
-  -- rw [list_vgoal_derive_def] at subs
-  -- rw [vGoal.pc] at hsat ; simp at hsat
-  -- rw [vComplete_restrict] at complete
-  -- replace complete := complete c hsat
-  -- replace complete := complete x hx
-  -- cases' complete with T hT
-  -- rw [vFamily.derive_mem_iff] at hT
-  -- rcases hT with ⟨hT,hT'⟩
-  -- cases' hT with t hT
-  -- replace subs := subs (Goal.pred (invariant P) t.1)
-  -- simp at subs
-  -- apply subs t.1 t.2 (by aesop) (by rw [vGoal.pc]; simp_all)
-  -- simp_all
-  -- . rw [vGoal.derive_pred]
-  --   simp
-  --   unfold invariant
-  --   simp
-  --   rw [derive_def_prod]
-  --   simp_all
-  -- . simp_all
 
 
 
@@ -553,45 +351,12 @@ by
 
 
 
-
-
-  -- rw [domainDecomp,vGoal.pc] at * ;
-  -- simp only [set_idx, Subtype.forall, Prod.mk.eta, List.mem_map,Finset.mem_toList, Prod.exists, forall_exists_index, and_imp] at *
-  -- replace complete := complete c hsat
-  -- simp only [Subtype.coe_eta] at complete
-  -- rw [undevGoals]
-  -- simp
-  -- rw [Goal.semantics]
-  -- simp
-  -- simp only [set_idx]
-  -- intros k hsatx
-  -- rcases complete k hsatx with ⟨T, hT, hT'⟩
-  -- have := vFinFamily.derive_mem_iff.mp hT
-  -- cases' this with t ht
-  -- replace subs := subs (vGoal.pred t.2 (λ t => ∀ x ∈ t, P x) t) t.1 t.2 (by simp [ht.1] )
-  -- rw [vGoal.pc] at subs ; simp at subs
-  -- replace subs := subs ht.2.2
-  -- rw [semantics, vGoal.derive_pred] at subs
-  -- simp at subs
-  -- apply subs k
-  -- rw [← ht.2.1] at hT'
-  -- rw [derive_def_prod_fin]
-  -- simp [ht.2.2]
-  -- exact hT'
-
--- end Finite
-
--- variable {α : Type} [DecidableEq α]  {Φ : FeatModel F}
 
 def complete (S : vFinset α F) (V : vFinFamily α F) (Φ : FeatModel F) : Prop :=
   ∀ c : Config Φ,
     ∀ x ∈ S ↓ c,
       ∃ T ∈ V ↓ c, x ∈ T
 
-
--- noncomputable
--- def decompose (S : vFinset α F) : vFinFamily α F :=
---   S.toList.map (λ ⟨a,pc⟩ => ⟨{a},pc⟩ )
 
 noncomputable
 def explode (S : vFinset α F) : vList (Finset α) F := S.toList.map (λ ⟨a,pc⟩ => ⟨{a},pc⟩ )
@@ -651,69 +416,6 @@ by
         simp
         simp [Finset.mem_sup]
         aesop
-
-        -- induction S using Finset.induction generalizing x with
-        -- | empty =>
-        --   simp
-        -- | @insert x' s' h' h'' =>
-        --    simp only [Finset.mem_insert, Finset.image_insert]
-        --    ext x''
-        --    simp
-        --    constructor
-        --    . intro h
-        --      simp at h
-
-        --    . admit
-
       . assumption
   . use a
   . aesop
-
-
-
-
-
-
--- namespace General
--- /-- NOTE: `[DecidableEq (Set α)]` is not generally synthesizable in practice.
---  -- The "easier to use" version is the one for Finsets above.
---  -- We keep this version just for reference, while we develop an alternative setup for sets defined  by decidable predicates -/
--- noncomputable def domainDecomp  {α : Type} [DecidableEq (Set α)]  {Φ : FeatModel F} (P : α → Prop) (pc : PC F) : vTemplate (Set α) (Family α) (vSet α F) (vFamily α F) Φ :=
---   {
---     parentPC := pc
---     parent := λ s => ∀ x ∈ s, P x
---     prec := λ (s, v) => ∀ c : Config Φ, c ⊨ pc → ∀ x ∈ s ↓ c, ∃ T ∈ v ↓ c, x ∈ T
---     apply := λ (_, v) => v.toList.map (λ ⟨s,pc'⟩ => .pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') )
---   }
-
--- lemma domainDecomp_apply {α : Type} [DecidableEq (Set α)]  {Φ : FeatModel F} {P : α → Prop} {pc : PC F} {s : vSet α F} {f : vFamily α F} :
---   (domainDecomp P pc (Φ:=Φ)).apply (s, f) = f.toList.map (λ ⟨s,pc'⟩ => vGoal.pred pc' (λ t => ∀ x ∈ t, P x) (Prod.mk s pc') ) :=
---   rfl
-
--- theorem domainDecompValid {α : Type} [DecidableEq (Set α)]  {Φ : FeatModel F} (P : α → Prop) (pc : PC F) : valid (domainDecomp P pc (Φ:=Φ)) :=
--- by
---   intros s f complete c hsat subs
---   rw [domainDecomp_apply] at subs
---   rw [domainDecomp,vGoal.pc] at * ;
---   simp only [set_idx, Subtype.forall, Prod.mk.eta, List.mem_map,Finset.mem_toList, Prod.exists, forall_exists_index, and_imp] at *
---   replace complete := complete c hsat
---   simp only [Subtype.coe_eta] at complete
---   rw [semantics,vGoal.derive_pred]
---   simp only [set_idx]
---   intros k hsatx
---   rcases complete k hsatx with ⟨T, hT, hT'⟩
---   have := vFamily.derive_mem_iff.mp hT
---   cases' this with t ht
---   replace subs := subs (vGoal.pred t.2 (λ t => ∀ x ∈ t, P x) t) t.1 t.2 (by simp [ht.1] )
---   rw [vGoal.pc] at subs ; simp at subs
---   replace subs := subs ht.2.2
---   rw [semantics, vGoal.derive_pred] at subs
---   simp at subs
---   apply subs k
---   rw [← ht.2.1] at hT'
---   rw [derive_def_prod]
---   simp [ht.2.2]
---   exact hT'
-
--- end General
--- end vTemplate
