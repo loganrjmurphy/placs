@@ -9,18 +9,5 @@ This project established formal semantics of Assurance Cases (ACs) in the style 
 After cloning the repository:
 
 1. Run `lake exe cache get` to download mathlib. This may take several minutes.
-2. Run `lake build` to build the repository. This will verify all proofs in the `SPL` and `Assurance` directories.  You should see something like: 
-```
-[3114/4452] Building SPL.Config
-[4441/4452] Building Assurance.Product.GSN
-[4442/4452] Building SPL.Lifting
-[4443/4452] Building SPL
-[4443/4452] Building SPL.Data
-[4446/4452] Building Assurance.Product.Template
-[4446/4452] Building Assurance.ProductLine.vGSN
-[4447/4452] Building Assurance.Product.Analytic
-[4448/4452] Building Assurance.ProductLine.vTemplate
-[4450/4452] Building Assurance.ProductLine.Analytic
-[4451/4452] Building Assurance
-```
+2. Run `lake build` to build the repository. 
 3. Use a supported editor (e.g., VSCode) to inspect the formalization manually.
