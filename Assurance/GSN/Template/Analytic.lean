@@ -1,8 +1,6 @@
-import Assurance.Product.Template
+import Assurance.GSN.Template.Basic
 
 set_option autoImplicit false
-
-open scoped Goal
 
 structure AnalyticTemplate (α X Y: Type) where
  parent : α → Prop

@@ -1,5 +1,5 @@
-import Assurance.Product.Analytic
-import Assurance.ProductLine.vTemplate
+import Assurance.GSN.Template.Analytic
+import Assurance.vGSN.Template.Basic
 set_option autoImplicit false
 
 variable {𝔽 : Type} [FeatureSet 𝔽]

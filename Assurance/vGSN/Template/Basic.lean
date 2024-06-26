@@ -1,6 +1,9 @@
 import Var.Data
-import Assurance.ProductLine.Properties
-import Assurance.Product.Template
+import Var.Proof
+import Assurance.GSN.Basic
+import Assurance.GSN.Template.Basic
+import Assurance.GSN.Template.DomainDecomp
+import Assurance.vGSN.Basic
 import Mathlib.Tactic
 set_option autoImplicit false
 open vSet vGSN
@@ -47,6 +50,7 @@ def lift_precondition_restrict
 def lift_precondition_restrict_eq
   (prec : A × D → Prop) (φ : PC F) (x : α) (d : γ) :
   lift_precondition_restrict (Φ:=Φ) prec φ (x,d) = [Φ| φ] prec (x,d) := by rfl
+
 
 def valid'  (T : vTemplate' A D α γ Φ) : Prop :=
  ∀ x d, T.prec (x, d) →
@@ -340,16 +344,6 @@ by
   rw [vDomDecompValid'' P]
   apply lift_valid' (DomainDecomp P) ((vDomainDecomp P pc).apply) (domDecompLiftApply (Φ:=Φ) (P:=P)) pc
   exact domainDecompValid
-
-
-
-
-
-
-
-
-
-
 
 
 def complete (S : vFinset α F) (V : vFinFamily α F) (Φ : FeatModel F) : Prop :=

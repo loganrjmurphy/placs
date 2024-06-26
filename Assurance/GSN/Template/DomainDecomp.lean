@@ -1,27 +1,6 @@
-import Assurance.Product.Properties
+import Assurance.GSN.Template.Basic
 import Var.Data
-
-set_option autoImplicit false
 set_option linter.unusedVariables false
-
-open scoped Goal
-
-structure Template (α D : Type) where
-  parent : α → Prop
-  apply : α × D → List GSN
-  prec : α × D → Prop := λ _ => True
-
-structure verifTemplate (α D : Type) extends Template α D where
-  verif : α × D → Bool
-  verif_sound : ∀ (x : α × D), verif x ↔ prec x
-
-namespace Template
-
-
-def valid {α D : Type} (T : Template α D) : Prop :=
-  ∀ x, T.prec x → GSN.refines ((Goal.pred T.parent x.fst), (T.apply x))
-
-end Template
 
 def invariant {α : Type} (P : α → Prop) (t : Set α) : Prop :=
   ∀ x ∈ t, P x
@@ -74,7 +53,7 @@ lemma subgoals_iff {α : Type} {P : α → Prop} {F : Family α} :
     simp only [List.mem_map, Finset.mem_toList, forall_exists_index, and_imp,
      forall_apply_eq_imp_iff₂,Goal.pred_semantics, invariant_iff]
 
-def refinement_condition {α : Type} {P : α → Prop} : (DomainDecomp P).valid ↔
+lemma refinement_condition {α : Type} {P : α → Prop} : (DomainDecomp P).valid ↔
   ∀ s : Set α, ∀ F : Family α, (∀ x ∈ s, ∃ t ∈ F, x ∈ t) → (∀ a ∈ F, ∀ x ∈ a, P x) → ∀ x ∈ s, P x :=
 by
   simp only [Template.valid,GSN.refines_def, Goal.pred_semantics, parent_iff, Prod.forall, prec_iff, apply_def,
@@ -83,9 +62,6 @@ by
 
 
 end DomainDecomp
-
-
-
 
 theorem domainDecompValid {α : Type}  {P : α → Prop} : Template.valid <| DomainDecomp P :=
 by
